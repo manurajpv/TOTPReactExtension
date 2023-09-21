@@ -2,6 +2,7 @@ import React from "react";
 import "./App.css";
 import ls from "localstorage-slim";
 import { TOTPElement } from "./totpEl";
+import '@fontsource/roboto/700.css';
 
 function App() {
 

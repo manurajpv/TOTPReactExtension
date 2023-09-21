@@ -6,6 +6,7 @@ import TextField from "@mui/material/TextField";
 import LinearProgress from "@mui/material/LinearProgress";
 import { useState, useEffect } from "react";
 import ls from "localstorage-slim";
+import CardElem from "./appElement";
 const totp = require("totp-generator");
 
 ls.config.encrypt = true;
@@ -13,26 +14,35 @@ interface Props {
   keyValue: string | null;
 }
 
+interface secret {
+  key:string|any,
+  progress:number
+}
+
 const TOTPElement: React.FC<Props> = ({ keyValue }) => {
   const [key, updateKey] = useState("");
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [keyInpErr, setKeyInpErr] = useState("");
 
   const saveKey = (keyVal: string) => {
-    console.log(keyVal);
     if (keyVal === "" || keyVal.trim().length < 10) {
-      alert("invalid Secret Key");
+      setKeyInpErr("Invalid Secret Key");
       return;
     }
+    setKeyInpErr("");
     ls.set("savedKey", keyVal);
     window.location.reload();
   };
+  const removeKey =()=>{
+    console.log("cleared");
+    ls.clear();
+  }
   const getCurrentElapsedTime = () => {
     var d = new Date();
     var seconds = Math.round(d.getTime() / 1000);
-    console.log(seconds % 30);
     return seconds % 30;
   };
-  const getKeyAndCode = () => {
+  const getKeyAndCode = (keyValue:string|null) => {
     try {
       const token = totp(keyValue);
       return token;
@@ -54,13 +64,14 @@ const TOTPElement: React.FC<Props> = ({ keyValue }) => {
   const progress = useProgress();
   console.log(progress);
   const isSavedKey = ls.get("savedKey");
-  if (isSavedKey === null || getKeyAndCode() === false)
+  const passProps:secret = {key:getKeyAndCode(keyValue),progress:progress}
+  if (isSavedKey === null || getKeyAndCode(keyValue) === false)
     return (
       <div>
         <Box
           component="div"
           sx={{
-            "& > :not(style)": { m: 1, width: "25ch" },
+            "& > :not(style)": { m: 1, width: "80%" },
           }}
         >
           <TextField
@@ -68,6 +79,9 @@ const TOTPElement: React.FC<Props> = ({ keyValue }) => {
             label="Enter Your Key"
             variant="outlined"
             value={key}
+            size="small"
+            error={keyInpErr === "" ? false : true}
+            helperText={keyInpErr === "" ? "" : keyInpErr}
             onChange={(e) => updateKey(e.target.value)}
           />
 
@@ -75,6 +89,8 @@ const TOTPElement: React.FC<Props> = ({ keyValue }) => {
             variant="contained"
             disableElevation
             onClick={(e) => saveKey(key)}
+            size="medium"
+            sx={{ m: "1rem" }}
           >
             Submit
           </Button>
@@ -84,15 +100,17 @@ const TOTPElement: React.FC<Props> = ({ keyValue }) => {
   else
     return (
       <div>
-        <Box>
-          <label htmlFor="generatedKey"></label>
-          <span id="generatedKey" className="generatedKey">
-            {getKeyAndCode()}
-          </span>
-          <Box sx={{ width: "100%" , alignContent: "center"}}>
-            <LinearProgress variant="determinate" value={progress*100} />
-          </Box>
-        </Box>
+        <CardElem secret={passProps} />
+        <Button
+          variant="contained"
+          disableElevation
+          onClick={(e) => removeKey()}
+          size="medium"
+          sx={{ m: "1rem" }}
+          color="error"
+        >
+          Reset
+        </Button>
       </div>
     );
 };
