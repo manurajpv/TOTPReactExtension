@@ -1,73 +1,87 @@
 import React from "react";
 import "./totpEl.css";
+import { styled } from "@mui/material/styles";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
-import LinearProgress from "@mui/material/LinearProgress";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import ls from "localstorage-slim";
 import CardElem from "./appElement";
-const totp = require("totp-generator");
+import { Html5Qrcode } from "html5-qrcode";
+import * as OTPAuth from "otpauth";
 
 ls.config.encrypt = true;
-interface Props {
-  keyValue: string | null;
-}
 
-interface secret {
-  key:string|any,
-  progress:number
-}
+const VisuallyHiddenInput = styled("input")({
+  clip: "rect(0 0 0 0)",
+  clipPath: "inset(50%)",
+  height: 1,
+  overflow: "hidden",
+  position: "absolute",
+  bottom: 0,
+  left: 0,
+  whiteSpace: "nowrap",
+  width: 1,
+});
 
-const TOTPElement: React.FC<Props> = ({ keyValue }) => {
+const TOTPElement = (props: any) => {
   const [key, updateKey] = useState("");
-  const [elapsedTime, setElapsedTime] = useState(0);
   const [keyInpErr, setKeyInpErr] = useState("");
-
-  const saveKey = (keyVal: string) => {
-    if (keyVal === "" || keyVal.trim().length < 10) {
-      setKeyInpErr("Invalid Secret Key");
-      return;
-    }
+  const [file, setFile] = useState<File | any>(null);
+  console.log("props ls key", props);
+  const saveKey = (keyVal: any) => {
     setKeyInpErr("");
-    ls.set("savedKey", keyVal);
+    try {
+      let savedkeyVal: Array<any> | null = ls.get("savedKey");
+      console.log(keyVal);
+      if (savedkeyVal === null) savedkeyVal = [];
+      savedkeyVal.push(keyVal);
+      console.log(savedkeyVal);
+      ls.set("savedKey", savedkeyVal);
+    } catch (err) {
+      console.log(err);
+      keyVal = [];
+      keyVal.push(keyVal);
+      ls.set("savedKey", keyVal);
+    }
     window.location.reload();
   };
-  const removeKey =()=>{
+  const removeKey = () => {
     console.log("cleared");
     ls.clear();
-  }
-  const getCurrentElapsedTime = () => {
-    var d = new Date();
-    var seconds = Math.round(d.getTime() / 1000);
-    return seconds % 30;
   };
-  const getKeyAndCode = (keyValue:string|null) => {
-    try {
-      const token = totp(keyValue);
-      return token;
-    } catch (error) {
-      return false;
-    }
+  const getCodeFromImage = (imageFile: File) => {
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode
+      .scanFile(imageFile, true)
+      .then((decodedText) => {
+        OTPAuth.URI.parse(decodedText);
+        console.log(decodedText);
+        saveKey(decodedText);
+      })
+      .catch((err) => {
+        // failure, handle it.
+        console.log(`Error scanning file. Reason: ${err}`);
+        setKeyInpErr("Invalid Secret Key");
+        return false;
+      });
   };
-  const useProgress = (maxTimeInSeconds = 30) => {
-    useEffect(() => {
-      setElapsedTime(getCurrentElapsedTime());
-      const intervalId = setInterval(() => {
-        setElapsedTime((t) => t + 1);
-      }, 1000);
-      return () => clearInterval(intervalId);
-    }, []);
-    return (elapsedTime % maxTimeInSeconds) / maxTimeInSeconds;
-  };
-
-  const progress = useProgress();
-  console.log(progress);
-  const isSavedKey = ls.get("savedKey");
-  const passProps:secret = {key:getKeyAndCode(keyValue),progress:progress}
-  if (isSavedKey === null || getKeyAndCode(keyValue) === false)
+  if (!props.data)
     return (
       <div>
+        <Box>
+          <div id="reader" style={{ width: "600px" }} hidden></div>
+
+          <Button component="label" variant="contained">
+            Upload file
+            <VisuallyHiddenInput
+              type="file"
+              onChange={(e) => {
+                setFile(e.target.files);
+              }}
+            />
+          </Button>
+        </Box>
         <Box
           component="div"
           sx={{
@@ -88,7 +102,11 @@ const TOTPElement: React.FC<Props> = ({ keyValue }) => {
           <Button
             variant="contained"
             disableElevation
-            onClick={(e) => saveKey(key)}
+            // onClick={(e) => saveKey(key)}
+            onClick={(e) => {
+              console.log(file);
+              getCodeFromImage(file[0]);
+            }}
             size="medium"
             sx={{ m: "1rem" }}
           >
@@ -99,19 +117,26 @@ const TOTPElement: React.FC<Props> = ({ keyValue }) => {
     );
   else
     return (
-      <div>
-        <CardElem secret={passProps} />
-        <Button
-          variant="contained"
-          disableElevation
-          onClick={(e) => removeKey()}
-          size="medium"
-          sx={{ m: "1rem" }}
-          color="error"
-        >
-          Reset
-        </Button>
-      </div>
+      <>
+        {props.data.map(function (data: string) {
+          if (data)
+            return (
+              <div>
+                <CardElem data={data} />
+                <Button
+                  variant="contained"
+                  disableElevation
+                  onClick={(e) => removeKey()}
+                  size="medium"
+                  sx={{ m: "1rem" }}
+                  color="error"
+                >
+                  Reset
+                </Button>
+              </div>
+            );
+        })}
+      </>
     );
 };
 
