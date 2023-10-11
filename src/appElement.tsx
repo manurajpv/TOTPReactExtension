@@ -6,10 +6,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Grid from "@mui/material/Unstable_Grid2";
 import Box from "@mui/material/Box";
 import * as OTPAuth from "otpauth";
-
 import "./cardElem.css";
-
-const totp = require("totp-generator");
 
 const CardElem = (data: any) => {
   const [elapsedTime, setElapsedTime] = useState(0);

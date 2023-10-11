@@ -78,6 +78,7 @@ const TOTPElement = (props: any) => {
               type="file"
               onChange={(e) => {
                 setFile(e.target.files);
+                e.target.focus;
               }}
             />
           </Button>
